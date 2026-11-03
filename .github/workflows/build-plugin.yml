@@ -1,0 +1,50 @@
+name: Build Control Center
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/**'
+      - 'package.json'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'build.gradle.kts'
+      - '.github/workflows/build-plugin.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build plugins
+        run: ./gradlew --no-daemon packageAllPlugins
+        env:
+          GITHUB_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN }}
+
+      - name: Upload plugin ZIP files
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-center-build
+          path: build/dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
